@@ -1,0 +1,87 @@
+$environment = $($env:environment)
+function AddGroupFourEnvironment ([PsObject] $cred, [string] $WebspaceDomain, [string] $domain, [string] $OPDBDomain, [string] $HISTDBDomain){
+    #This boolean tracks the success of each step. The process only continues if each step is successfully
+    $globalfail=$true
+    
+
+    If($globalfail){
+      $globalfail=AddGroup -domain $domain
+    }else{
+      $outputstr=@("`nThe Admin Group ",$domain,"failed to AddGroup.`n")
+      Write-Host $outputstr
+      return $false
+    }     
+  
+    If($globalfail){
+      $outputstr =@(".`n")
+      Write-Host $outputstr
+      return $true
+    }else{
+      $outputstr=@("`nThe Admin Group located on",$domain,"failed to Add Group.`n")
+      Write-Host $outputstr
+      return $false
+    }
+}
+#This function Add Groups in Admin Group of a machine
+# It takes a domain string and credential,  a boolean for verbose output
+# It returns a boolean $true if the Add Groups , $false otherwise
+function AddGroup ([string] $domain){
+	#This boolean is returned to determine if the LogOffone was successful or not
+	try{
+$IPAddress=[System.Net.Dns]::GetHostAddresses($domain).IPAddressToString
+}
+catch{
+$outputstr=@("`n",$server.trim()," could not connect because the domain name is not valid.`n")
+Write-Host $outputstr
+exit 1
+}
+	             
+			$IPAddress
+      (get-service -ComputerName $domain -Name 'Puppet Agent' -ErrorAction SilentlyContinue).Start() 
+trap
+{
+ continue
+} 
+			$groupadmins = "UNV_PROFICY_ADMIN","UNV_Proficy_Support"
+			foreach ($groupadmin in $groupadmins)
+			{
+			[ADSI]$account = "WinNT://Amer.consind.ge.com/$groupadmin,Group"
+			[ADSI]$group = "WinNT://$domain/Administrators,Group"
+			$group.Add($account.path)
+trap
+{
+ continue
+}
+			}
+
+                        
+			
+
+
+	return $AddGroup
+}
+
+switch ($environment.Split(",")){
+ 'DEV3' {$success=AddGroupFourEnvironment  -domain 'DEV3TRACKER'}
+  'INTAP1FL' {$success=AddGroupFourEnvironment -cred $cred -domain 'INTAP1FLTRACKER'}
+  'INTAP1TL' {$success=AddGroupFourEnvironment -cred $cred -domain 'INTAP1TLTRACKER'}
+  'INTAP2' {$success=AddGroupFourEnvironment -cred $cred  -domain 'INTAP2TRACKER'}
+  'INTAP3P1' {$success=AddGroupFourEnvironment -cred $cred -domain 'INTAP3P1TRACKER'}
+  'INTAP3P2' {$success=AddGroupFourEnvironment -cred $cred -domain 'INTAP3P2TRACKER'}
+  'INTAP5' {$success=AddGroupFourEnvironment -cred $cred -domain 'INTAP5TRACKER'}
+  'INTDPO' {$success=AddGroupFourEnvironment -cred $cred -domain 'INTDPOTRACKER'}
+  'INTRPO' {$success=AddGroupFourEnvironment -cred $cred -domain 'INTRPOTRACKER'}
+  'INTCPO' {$success=AddGroupFourEnvironment -cred $cred -domain 'INTCPOTRACKER'}  
+  'INTFLT1' {$success=AddGroupFourEnvironment -cred $cred -domain 'INTFLT1TRACKER'}
+  'INTFLT2' {$success=AddGroupFourEnvironment -cred $cred -domain 'INTFLT2TRACKER'}
+
+}
+
+If($success){
+$outputstr=@("`nUNV_PROFICY_ADMIN & UNV_Proficy_Support Groups are Added successfully on ",$environment,"TRACKER server  .`n")
+  Write-Host $outputstr
+  Return
+}else{
+$outputstr=@("`nUNV_PROFICY_ADMIN & UNV_Proficy_Support Groups are not Added successfully. on",$environment,"TRACKER server  `n") 
+  Write-Host $outputstr
+}
