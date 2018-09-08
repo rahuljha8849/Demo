@@ -1,0 +1,59 @@
+$FunPassword = ConvertTo-SecureString "$($ENV:FunPassword)" -AsPlainText -Force
+$cred = New-Object System.Management.Automation.PSCredential ("$ENV:FunUser", $FunPassword)
+
+$environments = $($env:environments)
+$environment2 = $environments.Split(",")
+foreach($environment in $environment2)
+{
+write-host "`nChecking Disconnected User Sessions On $environment`n"
+
+$file = "Translation _Table.xlsx"
+$sheetName = "SERVER"
+$filepath = "D:\AutScripts\$file"
+
+#Create an instance of Excel.Application and Open Excel file
+$objExcel = New-Object -ComObject Excel.Application
+$workbook = $objExcel.Workbooks.Open($filepath)
+$sheet = $workbook.Worksheets.Item($sheetName )
+$objExcel.Visible=$false
+
+#Count max row
+$rowMax = ($sheet.UsedRange.Rows).count
+#Declare the starting positions
+$rowEnvironment,$colEnvironment= 1,1
+$rowSite,$colSite= 1,3
+$rowType,$colType= 1,2
+$rowHost,$colHost= 1,4
+$rowSkip,$colSkip= 1,5
+#loop to get values and store it
+for ($i=1; $i -le $rowMax-1; $i++)
+{
+$Environmenta  = $sheet.Cells.Item($rowEnvironment+$i,$colEnvironment).text
+$Site  = $sheet.Cells.Item($rowSite+$i,$colSite).text
+$Type = $sheet.Cells.Item($rowType+$i,$colType).text
+$comp = $sheet.Cells.Item($rowHost+$i,$colHost).text
+$SkipServer = $sheet.Cells.Item($rowSkip+$i,$colSkip).text
+if($Environmenta+$Site -eq "$environment"){
+$finalvalue = $comp
+
+try{
+$IPAddress=[System.Net.Dns]::GetHostAddresses($finalvalue).IPAddressToString
+if($SkipServer -ne "X"){
+Invoke-Command -computername $finalvalue -argumentlist $cred -FilePath D:\autScripts\logoffdisconnectedusers.ps1
+write-host " Logoff disconnected users from $Site$Type"
+}else{write-host "$finalvalue is marked as Skip logoff disconnected user Sessions"}
+}
+catch{
+$outputstr=@("`n",$finalvalue.trim()," could not connect because the domain name is not valid.`n")
+Write-Host $outputstr
+}
+
+}
+}
+}
+#close excel file
+$objExcel.quit()
+
+
+
+
